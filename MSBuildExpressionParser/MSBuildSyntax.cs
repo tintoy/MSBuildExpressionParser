@@ -1,4 +1,5 @@
 ﻿using Sprache;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -210,6 +211,20 @@ namespace MSBuildExpressionParser
         );
 
         /// <summary>
+        ///     Parse a binary expression.
+        /// </summary>
+        public static readonly Parser<Node> Binary = Parse.Positioned(
+            Parse.ChainOperator(Tokens.Operator.Binary, Eval.Or(QuotedString),
+                (op, left, right) =>
+                {
+                    op.Children = new Node[] { left, right };
+
+                    return op;
+                }
+            )
+        );
+
+        /// <summary>
         ///     Parse an MSBuild expression.
         /// </summary>
         /// <param name="expression">
@@ -220,7 +235,18 @@ namespace MSBuildExpressionParser
         /// </returns>
         public static IEnumerable<Node> ParseExpression(string expression)
         {
-            return QuotedString.Or(Eval).Or(Whitespace).Many().Parse(expression);
+            IResult<IEnumerable<Node>> result = QuotedString.Or(Eval).Or(Whitespace).Many().TryParse(expression);
+            if (result.WasSuccessful)
+                return result.Value;
+
+            throw new FormatException(
+                result.Message
+                + "\nExpectations: ["
+                + String.Join(",", result.Expectations.Select(
+                    expectation => String.Format("\"{0}\"", expectation)
+                ))
+                + "]"
+            );
         }
     }
 }
