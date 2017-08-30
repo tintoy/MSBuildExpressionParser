@@ -151,11 +151,11 @@ namespace MSBuildExpressionParser
         ///     Parse an MSBuild evaluation expression, "$(xxx)".
         /// </summary>
         public static readonly Parser<Node> Eval = Parse.Positioned(
-            from open in Tokens.EvalOpen
-            from content in
-                TypeRef.Or(Identifier)
-                    .Many()
-            from close in Tokens.EvalClose
+            from content in Parse.Contained(
+                TypeRef.Or(Identifier).Many(),
+                open: Tokens.EvalOpen,
+                close: Tokens.EvalClose
+            )
             select new Node
             {
                 NodeType = NodeType.Eval,
@@ -200,13 +200,15 @@ namespace MSBuildExpressionParser
         ///     Parse a quoted string, "'xxx'".
         /// </summary>
         public static readonly Parser<Node> QuotedString = Parse.Positioned(
-            from openQuote in Tokens.SingleQuote
-            from contents in Eval.Or(StringCharacters).Many()
-            from closeQuote in Tokens.SingleQuote
+            from content in Parse.Contained(
+                Eval.Or(StringCharacters).Many(),
+                open: Tokens.SingleQuote,
+                close: Tokens.SingleQuote
+            )
             select new Node
             {
                 NodeType = NodeType.QuotedString,
-                Children = contents.ToArray()
+                Children = content.ToArray()
             }
         );
 
