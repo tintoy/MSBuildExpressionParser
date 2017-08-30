@@ -18,10 +18,7 @@ namespace MSBuildExpressionParser
             /// <summary>
             ///     An identifier (1 letter followed by 0 or more letters / digits).
             /// </summary>
-            public static readonly Parser<string> Identifier =
-                from leadingLetter in Parse.Letter
-                from rest in Parse.LetterOrDigit.Many().Text()
-                select leadingLetter + rest;
+            public static readonly Parser<string> Identifier = Parse.Identifier(Parse.Letter, Parse.LetterOrDigit);
 
             /// <summary>
             ///     A qualified identifier (one or more identifiers, delimited by ".").
