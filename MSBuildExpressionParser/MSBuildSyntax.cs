@@ -149,7 +149,7 @@ namespace MSBuildExpressionParser
         /// </summary>
         public static readonly Parser<Node> Eval = Parse.Positioned(
             from content in Parse.Contained(
-                TypeRef.Or(Identifier).Many(),
+                Refs.TypeRef.Or(Refs.Identifier).Many(),
                 open: Tokens.EvalOpen,
                 close: Tokens.EvalClose
             )
@@ -198,7 +198,7 @@ namespace MSBuildExpressionParser
         /// </summary>
         public static readonly Parser<Node> QuotedString = Parse.Positioned(
             from content in Parse.Contained(
-                Eval.Or(StringCharacters).Many(),
+                Refs.Eval.Or(Refs.StringCharacters).Many(),
                 open: Tokens.SingleQuote,
                 close: Tokens.SingleQuote
             )
@@ -213,7 +213,7 @@ namespace MSBuildExpressionParser
         ///     Parse a binary expression.
         /// </summary>
         public static readonly Parser<Node> Binary = Parse.Positioned(
-            Parse.ChainOperator(Tokens.Operator.Binary, Eval.Or(QuotedString),
+            Parse.ChainOperator(Tokens.Operator.Binary, Refs.Eval.Or(Refs.QuotedString),
                 (op, left, right) =>
                 {
                     op.Children = new Node[] { left, right };
@@ -224,17 +224,93 @@ namespace MSBuildExpressionParser
         );
 
         /// <summary>
+        ///     Parse an item in a list, "X" in "X;Y;Z".
+        /// </summary>
+        public static readonly Parser<Node> ListItem = Parse.Positioned(
+            from item in
+                Refs.QuotedString
+                    .Or(Refs.Identifier)
+                    .Or(Refs.Eval)
+                    .Or(Refs.Whitespace)
+            from delimiter in Parse.Char(';').Optional()
+            select item
+        );
+
+        /// <summary>
+        ///     Parse a list "X;Y;Z".
+        /// </summary>
+        public static readonly Parser<Node> List = Parse.Positioned(
+            from items in Refs.ListItem.Many()
+            select new Node
+            {
+                NodeType = NodeType.List,
+                Children = items.ToArray()
+            }
+        );
+
+        /// <summary>
+        ///     Lazy references to parsers.
+        /// </summary>
+        public static class Refs
+        {
+            /// <summary>
+            ///     Parse contiguous whitespace.
+            /// </summary>
+            public static readonly Parser<Node> Whitespace = Parse.Ref(() => MSBuildSyntax.Whitespace);
+
+            /// <summary>
+            ///     Parse an identifier, "A123".
+            /// </summary>
+            public static readonly Parser<Node> Identifier = Parse.Ref(() => MSBuildSyntax.Identifier);
+
+            /// <summary>
+            ///     Parse a qualified identifier, "A123.B456".
+            /// </summary>
+            public static readonly Parser<Node> QualifiedIdentifier = Parse.Ref(() => MSBuildSyntax.QualifiedIdentifier);
+
+            /// <summary>
+            ///     Parse an MSBuild type-reference expression, "[xxx]::".
+            /// </summary>
+            public static Parser<Node> TypeRef = Parse.Ref(() => MSBuildSyntax.TypeRef);
+
+            /// <summary>
+            ///     Parse contiguous characters in a string that have no special meaning.
+            /// </summary>
+            public static readonly Parser<Node> StringCharacters = Parse.Ref(() => MSBuildSyntax.StringCharacters);
+
+            /// <summary>
+            ///     Parse an MSBuild evaluation expression, "$(xxx)".
+            /// </summary>
+            public static readonly Parser<Node> Eval = Parse.Ref(() => MSBuildSyntax.Eval);
+
+            /// <summary>
+            ///     Parse a quoted string, "'xxx'".
+            /// </summary>
+            public static readonly Parser<Node> QuotedString = Parse.Ref(() => MSBuildSyntax.QuotedString);
+
+            /// <summary>
+            ///     Parse an item in a list, "X" in "X;Y;Z".
+            /// </summary>
+            public static readonly Parser<Node> ListItem = Parse.Ref(() => MSBuildSyntax.ListItem);
+
+            /// <summary>
+            ///     Parse a list "X;Y;Z".
+            /// </summary>
+            public static readonly Parser<Node> List = Parse.Ref(() => MSBuildSyntax.List);
+        }
+
+        /// <summary>
         ///     Parse an MSBuild expression.
         /// </summary>
         /// <param name="expression">
         ///     The expression to parse.
         /// </param>
         /// <returns>
-        ///     A sequence of <see cref="Node"/>s representing the syntax tree.
+        ///     A <see cref="Node"/> representing the root of the syntax tree.
         /// </returns>
-        public static IEnumerable<Node> ParseExpression(string expression)
+        public static Node ParseExpression(string expression)
         {
-            IResult<IEnumerable<Node>> result = QuotedString.Or(Eval).Or(Whitespace).Many().TryParse(expression);
+            IResult<Node> result = List.TryParse(expression);
             if (result.WasSuccessful)
                 return result.Value;
 

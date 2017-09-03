@@ -18,8 +18,9 @@ namespace MSBuildExpressionParser
             try
             {
                 const string testData = " 'Foo == Bar' 'a'  'Diddly O\\'Dee' $(Foo) $([MSBuild]::Hello) 'This is $(Me) talking $(BarBaz)' '$([Foo]::Diddly)'   '     a ' ";
-                foreach (Node node in MSBuildSyntax.ParseExpression(testData))
-                    DumpNode(node, depth: 0);
+
+                Node node = MSBuildSyntax.ParseExpression(testData);
+                DumpNode(node, depth: 0);
             }
             catch (Exception unexpectedError)
             {

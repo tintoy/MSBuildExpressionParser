@@ -43,6 +43,11 @@
         /// <summary>
         ///     Contiguious whitespace.
         /// </summary>
-        Whitespace
+        Whitespace,
+
+        /// <summary>
+        ///     A list ("X;Y;Z").
+        /// </summary>
+        List
     }
 }
